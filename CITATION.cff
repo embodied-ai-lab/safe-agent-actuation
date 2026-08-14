@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+title: "Safe Agent Actuation: Analyzing and Authorizing VLA Actions"
+message: "Cite this course artifact and its upstream OpenPI, FAST, and SST sources."
+type: software
+version: 0.1.0
+date-released: 2026-08-13
+authors:
+  - name: "Arizona State University"
+license: BSD-2-Clause
+repository-code: "https://github.com/YOUR_ORG/safe-agent-actuation"
+

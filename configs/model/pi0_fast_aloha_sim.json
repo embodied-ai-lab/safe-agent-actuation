@@ -1,0 +1,22 @@
+{
+  "model_family": "pi0-FAST",
+  "course_config": "pi0_fast_aloha_sim_course",
+  "checkpoint_uri": "gs://openpi-assets/checkpoints/pi0_fast_base",
+  "checkpoint_use": "base model used zero-shot outside its validated embodiment",
+  "openpi_commit": "15a9616a00943ada6c20a0f158e3adb39df2ccac",
+  "model_action_dimension": 32,
+  "predicted_action_horizon": 32,
+  "simulator_action_dimension": 14,
+  "executed_action_horizon": 10,
+  "normalization_source": "checkpoint assets/trossen",
+  "fast_tokenizer": "physical-intelligence/fast",
+  "model_weight_size_bytes": null,
+  "required_gpu_memory": ">8 GiB per official OpenPI inference guidance; peak for this configuration not yet measured",
+  "first_run_download": "make model-setup only",
+  "sol_cache_environment": "OPENPI_DATA_HOME",
+  "sol_cache_default_template": "/scratch/$USER/safe-agent-actuation/openpi",
+  "live_validation_status": "blocked: no official pi0-FAST checkpoint is published for ALOHA simulation",
+  "blocks_instructor_live_probes": true,
+  "blocks_student_release": false,
+  "student_release_note": "No graded student command runs this configuration. Part 1 reads the response record written by 'make inspect-actions'."
+}

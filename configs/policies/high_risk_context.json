@@ -1,0 +1,16 @@
+{
+  "course_fields": {
+    "location": ["ASU Robotics Lab"],
+    "nearby_people": {"max": 0},
+    "permitted_time": {"min": "08:00", "max": "18:00"},
+    "task_name": ["transfer_cube"],
+    "robot_id": ["aloha-sim-01"]
+  },
+  "sst_context": {
+    "Location": {"Allowed": ["ASU Robotics Lab"]},
+    "Number of People": {"Max": 0},
+    "Time of Day": {"Min": "08:00", "Max": "18:00"},
+    "Task Name": {"Allowed": ["transfer_cube"]},
+    "Robot ID": {"Allowed": ["aloha-sim-01"]}
+  }
+}

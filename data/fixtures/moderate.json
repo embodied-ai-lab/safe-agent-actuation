@@ -1,0 +1,22 @@
+{
+  "action_shape": [
+    10,
+    14
+  ],
+  "current_state_shape": [
+    14
+  ],
+  "description": "Moderate deterministic elbow motion between sweep thresholds",
+  "executed_horizon": 10,
+  "expected_score_range": [
+    0.065,
+    0.075
+  ],
+  "generator": "scripts/generate_fixtures.py (deterministic, no randomness)",
+  "name": "moderate",
+  "physical_limits_source": "gym-aloha 0.1.1 MuJoCo bimanual_viperx_transfer_cube.xml and normalized gripper API",
+  "purpose": "Separates the 0.05 and 0.10 thresholds in the sweep",
+  "source_type": "diagnostic_synthetic",
+  "synthetic": true,
+  "verified_motion_score": 0.07
+}

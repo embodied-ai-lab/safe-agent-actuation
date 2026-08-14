@@ -1,0 +1,115 @@
+"""Safe Agent Actuation course package.
+
+The offline core traces decoded VLA actions through motion analysis,
+context-based authorization, authenticated protection, and simulator-only
+actuator enforcement.
+"""
+
+from .actuator import Actuator, RecordingSimulator, SafeActuator, SimulatorActuator
+from .context import (
+    ActionContext,
+    AuthorizationContext,
+    ContextBuilder,
+    ContextPolicy,
+    ContextPolicyDecision,
+    DeterministicContextProvider,
+)
+from .fixtures import (
+    ActionFixture,
+    FixtureSource,
+    load_action_fixture,
+    load_fixture,
+    save_action_fixture,
+    write_action_fixture,
+)
+from .motion import (
+    JointMotionAnalyzer,
+    MotionAnalyzer,
+    analyze_motion,
+    classify_motion,
+)
+from .protection import (
+    ActionProtector,
+    AESGCMProtector,
+    AuthenticationError,
+    Authorizer,
+    ExpiredKeyError,
+    InMemorySessionKeyStore,
+    LowRiskEnvelope,
+    MalformedEnvelopeError,
+    OfflineContextAuthorizer,
+    ProtectedActionEnvelope,
+    ProtectedEnvelope,
+    ProtectionError,
+    SessionKey,
+    SessionKeyStore,
+    TrustedLowRiskChannel,
+    UnknownKeyError,
+)
+from .records import (
+    ActionRecord,
+    LatencyRecord,
+    save_action_record,
+    write_action_record,
+)
+from .types import (
+    ActuationResult,
+    ActuatorDecision,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    JointLimits,
+    MotionAnalysis,
+    PhysicalLimits,
+    RiskClassification,
+)
+
+__all__ = [
+    "AESGCMProtector",
+    "ActionContext",
+    "ActionFixture",
+    "ActionProtector",
+    "ActionRecord",
+    "ActuationResult",
+    "Actuator",
+    "ActuatorDecision",
+    "AuthenticationError",
+    "AuthorizationContext",
+    "AuthorizationDecision",
+    "AuthorizationOutcome",
+    "Authorizer",
+    "ContextBuilder",
+    "ContextPolicy",
+    "ContextPolicyDecision",
+    "DeterministicContextProvider",
+    "ExpiredKeyError",
+    "FixtureSource",
+    "InMemorySessionKeyStore",
+    "JointLimits",
+    "JointMotionAnalyzer",
+    "LatencyRecord",
+    "LowRiskEnvelope",
+    "MalformedEnvelopeError",
+    "MotionAnalysis",
+    "MotionAnalyzer",
+    "OfflineContextAuthorizer",
+    "PhysicalLimits",
+    "ProtectedActionEnvelope",
+    "ProtectedEnvelope",
+    "ProtectionError",
+    "RecordingSimulator",
+    "RiskClassification",
+    "SafeActuator",
+    "SessionKey",
+    "SessionKeyStore",
+    "SimulatorActuator",
+    "TrustedLowRiskChannel",
+    "UnknownKeyError",
+    "analyze_motion",
+    "classify_motion",
+    "load_action_fixture",
+    "load_fixture",
+    "save_action_fixture",
+    "save_action_record",
+    "write_action_fixture",
+    "write_action_record",
+]

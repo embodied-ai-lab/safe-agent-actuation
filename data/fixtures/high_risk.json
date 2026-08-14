@@ -1,0 +1,22 @@
+{
+  "action_shape": [
+    10,
+    14
+  ],
+  "current_state_shape": [
+    14
+  ],
+  "description": "Large deterministic right-elbow sweep that must trigger high-risk authorization",
+  "executed_horizon": 10,
+  "expected_score_range": [
+    0.45,
+    0.55
+  ],
+  "generator": "scripts/generate_fixtures.py (deterministic, no randomness)",
+  "name": "high_risk",
+  "physical_limits_source": "gym-aloha 0.1.1 MuJoCo bimanual_viperx_transfer_cube.xml and normalized gripper API",
+  "purpose": "Action at half of the elbow range, high risk at every course threshold",
+  "source_type": "diagnostic_synthetic",
+  "synthetic": true,
+  "verified_motion_score": 0.5
+}

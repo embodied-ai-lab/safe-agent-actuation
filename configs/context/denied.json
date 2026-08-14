@@ -1,0 +1,7 @@
+{
+  "location": "ASU Robotics Lab",
+  "nearby_people": 1,
+  "permitted_time": "14:00",
+  "task_name": "transfer_cube",
+  "robot_id": "aloha-sim-01"
+}

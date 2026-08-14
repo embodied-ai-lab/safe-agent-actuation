@@ -1,0 +1,22 @@
+{
+  "action_shape": [
+    10,
+    14
+  ],
+  "current_state_shape": [
+    14
+  ],
+  "description": "Gripper motion equal to the default threshold; >= must classify it high risk",
+  "executed_horizon": 10,
+  "expected_score_range": [
+    0.1,
+    0.1
+  ],
+  "generator": "scripts/generate_fixtures.py (deterministic, no randomness)",
+  "name": "boundary",
+  "physical_limits_source": "gym-aloha 0.1.1 MuJoCo bimanual_viperx_transfer_cube.xml and normalized gripper API",
+  "purpose": "Score exactly at the 0.10 default threshold for the boundary rule",
+  "source_type": "generated_boundary_test",
+  "synthetic": true,
+  "verified_motion_score": 0.1
+}

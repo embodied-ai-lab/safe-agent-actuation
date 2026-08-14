@@ -1,0 +1,76 @@
+{
+  "_comment": [
+    "Safe Agent Actuation SST topology.",
+    "Only net1.monitor and net1.actuator are registered.",
+    "The high-risk policy requires every Context field before a session key is issued."
+  ],
+  "authList": [
+    {
+      "id": 101,
+      "entityHost": "localhost",
+      "authHost": "localhost",
+      "tcpPort": 22900,
+      "udpPort": 22902,
+      "authPort": 22901,
+      "callbackPort": 22903,
+      "dbProtectionMethod": 1,
+      "backupEnabled": false,
+      "contextualCallbackEnabled": false
+    }
+  ],
+  "authTrusts": [],
+  "assignments": {
+    "net1.monitor": 101,
+    "net1.actuator": 101
+  },
+  "entityList": [
+    {
+      "group": "Monitors",
+      "name": "net1.monitor",
+      "distProtocol": "TCP",
+      "usePermanentDistKey": false,
+      "distKeyValidityPeriod": "1*hour",
+      "maxSessionKeysPerRequest": 5,
+      "netName": "net1",
+      "credentialPrefix": "Net1.Monitor",
+      "distributionCryptoSpec": {"cipher": "AES-128-CBC", "mac": "SHA256"},
+      "sessionCryptoSpec": {"cipher": "AES-128-CBC", "mac": "SHA256"},
+      "backupToAuthIds": [],
+      "targetServerInfoList": [
+        {"name": "net1.actuator", "host": "127.0.0.1", "port": 23100, "group": "Actuators"}
+      ]
+    },
+    {
+      "group": "Actuators",
+      "name": "net1.actuator",
+      "host": "127.0.0.1",
+      "port": 23100,
+      "distProtocol": "TCP",
+      "usePermanentDistKey": false,
+      "distKeyValidityPeriod": "1*hour",
+      "maxSessionKeysPerRequest": 5,
+      "netName": "net1",
+      "credentialPrefix": "Net1.Actuator",
+      "distributionCryptoSpec": {"cipher": "AES-128-CBC", "mac": "SHA256"},
+      "sessionCryptoSpec": {"cipher": "AES-128-CBC", "mac": "SHA256"},
+      "backupToAuthIds": []
+    }
+  ],
+  "filesharingLists": [],
+  "privilegeList": [],
+  "commPolicies": [
+    {
+      "RequestingGroup": "Monitors",
+      "TargetType": "Group",
+      "Target": "Actuators",
+      "MaxNumSessionKeyOwners": 2,
+      "SessionCryptoSpec": "AES-128-CBC:SHA256",
+      "AbsoluteValidity": "1*day",
+      "RelativeValidity": "20*sec",
+      "Expiration": "Infinity",
+      "IsDelegated": 0,
+      "Context": "{\"Location\":{\"Allowed\":[\"ASU Robotics Lab\"]},\"Number of People\":{\"Max\":0},\"Time of Day\":{\"Min\":\"08:00\",\"Max\":\"18:00\"},\"Task Name\":{\"Allowed\":[\"transfer_cube\"]},\"Robot ID\":{\"Allowed\":[\"aloha-sim-01\"]}}"
+    }
+  ]
+}
+

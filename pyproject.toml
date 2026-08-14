@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "safe-agent-actuation"
+version = "0.1.0"
+description = "Course tools for analyzing and authorizing VLA actions before simulated actuation"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = {file = "LICENSE"}
+authors = [{name = "Arizona State University"}]
+dependencies = [
+  "cryptography>=42,<47",
+  "matplotlib>=3.8,<4",
+  "numpy>=1.26,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pyright>=1.1.390",
+  "pytest>=8,<10",
+  "ruff>=0.9,<1",
+]
+
+[project.scripts]
+safe-agent-actuation = "safe_agent_actuation.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/safe_agent_actuation"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not live_openpi and not live_sst and not sol_validation'"
+markers = [
+  "live_openpi: needs the staged pi0-FAST checkpoint and a GPU",
+  "live_sst: needs generated SST runtime state and Auth",
+  "sol_validation: must run inside an ASU Sol compute allocation",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["third_party", "runtime", "results", ".venv", ".venv-openpi"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B"]
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "standard"
+include = ["src", "scripts", "sst/scripts", "tests"]
+exclude = ["third_party", "runtime", "results", ".venv", ".venv-openpi"]
+reportMissingImports = "warning"
+

@@ -1,0 +1,25 @@
+{
+  "source": "gym-aloha 0.1.1 MuJoCo bimanual_viperx_transfer_cube.xml and normalized gripper API",
+  "source_wheel_sha256": "2698037246dbb106828f0bc229b61007b0a21d5967c72cc373f7bc1083203584",
+  "dimension_names": [
+    "left_waist", "left_shoulder", "left_elbow", "left_forearm_roll",
+    "left_wrist_angle", "left_wrist_rotate", "left_gripper",
+    "right_waist", "right_shoulder", "right_elbow", "right_forearm_roll",
+    "right_wrist_angle", "right_wrist_rotate", "right_gripper"
+  ],
+  "units": [
+    "rad", "rad", "rad", "rad", "rad", "rad", "normalized_aperture",
+    "rad", "rad", "rad", "rad", "rad", "rad", "normalized_aperture"
+  ],
+  "lower_limits": [
+    -3.14158, -1.85005, -1.76278, -3.14158, -1.8675, -3.14158, 0.0,
+    -3.14158, -1.85005, -1.76278, -3.14158, -1.8675, -3.14158, 0.0
+  ],
+  "upper_limits": [
+    3.14158, 1.25664, 1.6057, 3.14158, 2.23402, 3.14158, 1.0,
+    3.14158, 1.25664, 1.6057, 3.14158, 2.23402, 3.14158, 1.0
+  ],
+  "default_threshold": 0.1,
+  "high_risk_comparison": ">=",
+  "expected_action_dimension": 14
+}

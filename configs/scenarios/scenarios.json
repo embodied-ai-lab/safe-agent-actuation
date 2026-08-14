@@ -1,0 +1,10 @@
+{
+  "baseline": {"source": "live", "gate": false},
+  "inspect-actions": {"source": "live", "gate": false},
+  "low-risk": {"source": "diagnostic_synthetic", "fixture": "low_risk.npz", "context": "allowed"},
+  "high-risk-allow": {"source": "diagnostic_synthetic", "fixture": "high_risk.npz", "context": "allowed"},
+  "high-risk-deny": {"source": "diagnostic_synthetic", "fixture": "high_risk.npz", "context": "denied"},
+  "bypass": {"source": "diagnostic_synthetic", "fixture": "high_risk.npz", "context": "allowed"},
+  "threshold-sweep": {"source": "diagnostic_synthetic", "thresholds": [0.02, 0.05, 0.1, 0.2]},
+  "grad-key-validity": {"source": "diagnostic_synthetic", "validity_seconds": [0.05, 0.2, 1.0]}
+}

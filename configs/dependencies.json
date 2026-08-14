@@ -1,0 +1,17 @@
+{
+  "openpi": {
+    "url": "https://github.com/Physical-Intelligence/openpi.git",
+    "commit": "15a9616a00943ada6c20a0f158e3adb39df2ccac",
+    "license": "Apache-2.0"
+  },
+  "iotauth": {
+    "url": "https://github.com/iotauth/iotauth.git",
+    "commit": "1a40ebece054880e4fe400c1c5880b05ac91ad79",
+    "license": "BSD-2-Clause",
+    "python_api": "entity/python"
+  },
+  "gym_aloha": {
+    "version": "0.1.1",
+    "wheel_sha256": "2698037246dbb106828f0bc229b61007b0a21d5967c72cc373f7bc1083203584"
+  }
+}
