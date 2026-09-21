@@ -9,7 +9,6 @@ import os
 import platform
 import shutil
 import socket
-import subprocess
 import sys
 from pathlib import Path
 
@@ -20,16 +19,57 @@ EXPECTED = {
 }
 
 
-def git_head(path: Path) -> str | None:
-    if not (path / ".git").exists():
+def repository_head(path: Path) -> str | None:
+    """Read a dependency HEAD from repository metadata without invoking Git.
+
+    Course validation sometimes runs under an explicit no-Git constraint.  A
+    submodule's ``.git`` entry is normally a text file pointing at the parent
+    repository's metadata directory, while a standalone checkout has a real
+    directory.  Reading HEAD and its referenced loose or packed ref is enough
+    for this pin check and cannot change an index or working tree.
+    """
+
+    dot_git = path / ".git"
+    if dot_git.is_dir():
+        git_dir = dot_git
+    elif dot_git.is_file():
+        try:
+            pointer = dot_git.read_text(encoding="utf-8").strip()
+        except OSError:
+            return None
+        prefix = "gitdir:"
+        if not pointer.lower().startswith(prefix):
+            return None
+        candidate = Path(pointer[len(prefix) :].strip())
+        git_dir = candidate if candidate.is_absolute() else (path / candidate).resolve()
+    else:
         return None
-    result = subprocess.run(
-        ["git", "-C", str(path), "rev-parse", "HEAD"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    return result.stdout.strip() if result.returncode == 0 else None
+
+    try:
+        head = (git_dir / "HEAD").read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    if not head.startswith("ref:"):
+        return head if len(head) == 40 else None
+
+    ref_name = head.split(":", 1)[1].strip()
+    try:
+        value = (git_dir / ref_name).read_text(encoding="utf-8").strip()
+    except OSError:
+        value = ""
+    if len(value) == 40:
+        return value
+
+    try:
+        packed_refs = (git_dir / "packed-refs").read_text(encoding="utf-8")
+    except OSError:
+        return None
+    suffix = f" {ref_name}"
+    for line in packed_refs.splitlines():
+        if line and not line.startswith(("#", "^")) and line.endswith(suffix):
+            candidate = line.split(" ", 1)[0]
+            return candidate if len(candidate) == 40 else None
+    return None
 
 
 def main() -> int:
@@ -53,7 +93,7 @@ def main() -> int:
             name: {
                 "path": str(ROOT / "third_party" / name),
                 "expected": expected,
-                "actual": git_head(ROOT / "third_party" / name),
+                "actual": repository_head(ROOT / "third_party" / name),
             }
             for name, expected in EXPECTED.items()
         },
@@ -82,4 +122,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

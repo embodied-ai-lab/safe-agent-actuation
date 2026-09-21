@@ -1,7 +1,9 @@
 # Safe Agent Actuation: Answers
 
 Copy this file to `submission/answers.md` and fill in every field. Do not rename
-the copy. Build your ZIP with `make submission GROUPID=<your-group-id>`.
+the copy. CSE 494 builds the ZIP with `make submission
+GROUPID=<your-group-id>`; CSE 598 adds `REQUIRE_GRAD=1` so missing Part 5
+artifacts fail packaging.
 
 ## Group and run metadata
 
@@ -17,6 +19,8 @@ the copy. Build your ZIP with `make submission GROUPID=<your-group-id>`.
 | IoTAuth commit | |
 | Model configuration | |
 | Checkpoint URI | |
+| Capture input origin | |
+| Capture action SHA-256 | |
 | Container SIF SHA-256 | |
 | Result directories used | |
 
@@ -24,20 +28,26 @@ the copy. Build your ZIP with `make submission GROUPID=<your-group-id>`.
 
 Read `results/inspect-actions/response_summary.json`.
 
-1. The `action_source` of the record, and what that source means:
+1. The `action_source`, model/checkpoint, OpenPI revision, and input origin:
 
 2. Were action tokens available? Token count if yes, or the reason given if no:
 
-3. Decoded model action shape and final action shape:
+3. Actual captured action shape and any separately exposed decoded-model
+   shape (do not infer an internal shape the API did not expose):
 
-4. Executed horizon and its relation to the predicted horizon:
+4. Configured and captured horizons, and whether any captured action was
+   executed:
 
-5. Mapping of the 14 ALOHA output dimensions to arm joints and grippers:
+5. Separately, the mapping of the 14-dimensional synthetic ALOHA fixtures to
+   arm joints and grippers (the DROID capture is not ALOHA):
 
 6. Why physical risk is assessed after decoding rather than from raw tokens.
    What is a token identifier, and what is it not?
 
-7. Inference and decode latency, or a note that the record has no timing:
+7. Inference timing and separately exposed decode timing, or the recorded API
+   limitation:
+
+8. Captured action checksum and what its successful validation establishes:
 
 ## Part 2: Motion-risk analysis
 
@@ -73,16 +83,27 @@ Read `results/inspect-actions/response_summary.json`.
 5. Security-boundary explanation. What do authentication and authorization
    establish here, and what do they not establish?
 
-## Part 4: Threshold and latency tradeoff
+## Part 4: Multi-threshold authorization and latency evaluation
 
-Fill from `results/threshold-sweep/`.
+Fill from `results/threshold-sweep/summary.json`. Rates use the summary's
+documented denominators. Do not omit denied or failed measured trials.
 
-| Threshold | High-risk rate | Authorization active rate | Allowed | Denied | Avg monitor-to-actuator (ms) | Worst (ms) |
+| Threshold | Classified trials | High-risk rate | Auth-path rate | Request attempts | Successful requests | Reuses |
 | --- | --- | --- | --- | --- | --- | --- |
 | 0.02 | | | | | | |
 | 0.05 | | | | | | |
 | 0.10 | | | | | | |
 | 0.20 | | | | | | |
+
+| Threshold | Allowed | Denied | Auth errors | Transfer success/failure | Failed trials | Mean latency (ms) | Observed max (ms) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0.02 | | | | | | | |
+| 0.05 | | | | | | | |
+| 0.10 | | | | | | | |
+| 0.20 | | | | | | | |
+
+Latency definition used by the experiment and why “observed maximum” is not a
+formal worst-case bound:
 
 Interpretation. Keep motion classification, policy authorization, and physical
 safety distinct:
@@ -93,13 +114,13 @@ Complete only if you are in CSE 598. Fill from `results/grad-key-validity/`.
 
 1. Hypothesis:
 
-2. Results for three validity periods:
+2. Results for the exact 5, 20, and 40 second relative-validity periods:
 
-| Relative validity | Key requests | Key reuses | Security-window sends | Denied after expiry |
-| --- | --- | --- | --- | --- |
-| | | | | |
-| | | | | |
-| | | | | |
+| Relative / absolute validity | First use | Request attempts / successes | Key reuses | Transfers attempted / successful | Remaining validity at context change | Denied after expiry |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| | | | | | | |
+| | | | | | | |
+| | | | | | | |
 
 3. Controlled baseline description:
 

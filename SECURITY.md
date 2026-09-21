@@ -1,6 +1,10 @@
 # Security model
 
-This project demonstrates context-based authorization and actuator enforcement for simulated VLA actions. It uses the paper's trust boundary and only the headless MuJoCo ALOHA simulator. Nothing in this repository is approved for a real robot.
+This project demonstrates context-based authorization and actuator enforcement
+for controlled VLA-action experiments. The graded path uses a deterministic
+EXECUTE/HOLD recording harness. An optional headless MuJoCo ALOHA integration
+is kept separate from grading. Nothing in this repository is approved for a
+real robot.
 
 ## Potentially untrusted components
 
@@ -25,23 +29,32 @@ The demonstrated guarantee assumes these components behave correctly:
 - the Monitor's SST logic
 - the low-risk monitor-to-actuator capability
 - actuator-side verification and decryption
-- the simulator state used for evaluation
+- the controlled current-state fixture and recording harness used for evaluation
 
 Compromise of any trusted component is outside the demonstrated guarantee.
 
 ## Enforcement paths
 
-Every proposed action is decoded and transformed into the final ALOHA command space before the Monitor computes motion risk. The analyzer uses the executable prefix, current 14-dimensional state, and configured physical ranges.
+Part 1 validates a genuine pi0-FAST-DROID response and its FAST decode-boundary
+evidence, but does not execute or reinterpret that eight-dimensional DROID
+output as ALOHA. Parts 2 through 5 start from explicitly synthetic, already
+decoded-space 14-dimensional ALOHA fixtures. The Monitor validates those
+fixtures before computing motion risk from the executable prefix, current
+state, and configured physical ranges.
 
 A valid low-risk action has `motion_score < threshold`. It does not request an SST session key, but it still travels in a trusted low-risk envelope that binds the checked action and decision. A caller cannot gain execution merely by labeling its own action low-risk.
 
-A valid high-risk action has `motion_score >= threshold`. It requires a context-authorized SST session key and an authenticated protected channel to the Actuator. The Actuator verifies and decrypts the protected payload before it can call the simulator.
+A valid high-risk action has `motion_score >= threshold`. It requires a
+context-authorized SST session key and an authenticated protected channel to
+the Actuator. The Actuator verifies and decrypts the protected payload before
+it can record or forward an EXECUTE decision.
 
 An invalid action is neither low-risk nor high-risk. It is blocked.
 
-## Fail-closed behavior
+## Fail-closed enforcement behavior
 
-The Actuator rejects:
+The Monitor withholds transfer after Auth denial or a Monitor-side failure.
+The Actuator rejects protected input that reaches it with:
 
 - missing or unknown input
 - malformed protected payloads
@@ -52,11 +65,13 @@ The Actuator rejects:
 - invalid physical ranges
 - authentication or integrity failures
 - unknown, not-yet-valid, or expired keys
-- an Auth denial
 - a direct unauthenticated bypass
-- a Monitor failure
 
-On rejection, the simulated Actuator requests the validated current commanded pose as a one-step hold. It checks that the hold pose matches the simulator's current observation. If even the hold request fails, the decision remains blocked and the failure is recorded. This is a validated simulator behavior, not a claim about safe behavior on physical hardware.
+Either path records HOLD in the graded harness with the validated current
+commanded pose and records no execution. The optional MuJoCo adapter separately
+checks that a requested hold pose matches its current observation. Neither
+behavior establishes that holding a pose is universally safe on physical
+hardware.
 
 Decode failure also produces no executable action. A normalized all-zero fallback is not a safe hold because later unnormalization can turn it into a nonzero physical command.
 
@@ -99,15 +114,27 @@ The deterministic provider makes the experiment repeatable. It does not sense re
 
 ## Session-key validity
 
-Session-key reuse reduces authorization latency but creates a security window after context changes. The CSE 598 experiment measures that tradeoff with three relative-validity periods.
+Session-key reuse reduces authorization latency but creates a security window
+after context changes. The CSE 598 experiment measures that tradeoff with three
+relative-validity periods, actual elapsed time, and distinct counts for request
+attempts, successful requests, reuse, and protected transfers.
 
-The pinned IoTAuth API begins relative validity at first use. Its Python cache is indexed by key ID rather than the complete authorization purpose. Course code must track the requested purpose, context, first use, reuse, and expiration explicitly. The basic denied scenario starts without a valid allowed-context key so it measures a fresh denial.
+The pinned IoTAuth API begins relative validity at first use. Its Python cache
+is indexed by key ID rather than the complete authorization purpose. Course
+code tracks the requested purpose, context, first use, reuse, and expiration
+explicitly. The basic denied scenario starts without a valid allowed-context
+key so it measures a fresh denial. The graduate experiment intentionally
+preserves the post-context-change window of a still-valid issued key; it does
+not claim immediate revocation.
 
 ## Data and secret handling
 
 Generated SST credentials, Auth databases, properties, passwords, PID files, and logs belong only under ignored `runtime/sst/`. Model weights and package caches belong in `/scratch/$USER`. The repository and submission ZIP must not contain either category.
 
-Action records may contain token IDs, decoded action summaries, contexts, key identifiers, decisions, and timing. They must never contain session-key bytes, private keys, passwords, credential files, or other secret material.
+Action records may contain token IDs only when an upstream response actually
+exposes them. They may also contain decoded-action summaries, contexts, key
+identifiers, decisions, and timing. They must never contain session-key bytes,
+private keys, passwords, credential files, or other secret material.
 
 Use the submission builder rather than assembling the ZIP by hand. It uses a fixed allowlist and excludes both submodules, runtime state, model caches, SIF images, virtual environments, credentials, databases, and prior archives.
 

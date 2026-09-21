@@ -13,7 +13,7 @@ python="${PY:-${root}/.venv/bin/python3}"
 case "$(hostname -s)" in
   *login*) echo "Refusing to generate SST state on a login node" >&2; exit 2 ;;
 esac
-for command in git tar node npm mvn java openssl; do
+for command in tar node npm mvn java openssl; do
   command -v "${command}" >/dev/null || { echo "Missing ${command}" >&2; exit 2; }
 done
 test -f "${iotauth}/examples/generateAll.sh" || { echo "Run make submodules" >&2; exit 2; }
@@ -21,11 +21,30 @@ test -x "${python}" || python="python3.11"
 
 mkdir -p "${runtime}/logs"
 chmod 700 "${runtime}"
-if [[ ! -f "${password_file}" ]]; then
+# A failed interpreter invocation can create an empty redirection target.  Do
+# not preserve that partial credential: generate to a temporary file, validate
+# it, and publish it atomically.
+if [[ ! -s "${password_file}" ]]; then
+  password_temp="${runtime}/.auth_password.tmp.$$"
   umask 077
-  "${python}" -c 'import secrets; print(secrets.token_urlsafe(24))' >"${password_file}"
+  rm -f "${password_temp}"
+  if ! "${python}" -c 'import secrets; print(secrets.token_urlsafe(24))' >"${password_temp}"; then
+    rm -f "${password_temp}"
+    echo "Failed to generate the Auth password" >&2
+    exit 1
+  fi
+  test -s "${password_temp}" || {
+    rm -f "${password_temp}"
+    echo "Failed to generate a non-empty Auth password" >&2
+    exit 1
+  }
+  mv "${password_temp}" "${password_file}"
 fi
 password="$(tr -d '\r\n' <"${password_file}")"
+test "${#password}" -ge 4 || {
+  echo "Auth password is unexpectedly short; remove runtime/sst/auth_password and retry" >&2
+  exit 1
+}
 
 rm -rf "${work}"
 mkdir -p "${source_copy}"
@@ -34,7 +53,18 @@ cleanup() {
 }
 trap cleanup EXIT
 
-git -C "${iotauth}" archive HEAD | tar -x -C "${source_copy}"
+# Generate into an isolated copy so the pinned dependency stays unchanged.
+# Exclude repository metadata and any prior build/cache output without
+# invoking Git.
+tar \
+  --exclude='./.git' \
+  --exclude='*/.git' \
+  --exclude='*/target' \
+  --exclude='*/node_modules' \
+  --exclude='*/__pycache__' \
+  --exclude='*.pyc' \
+  -C "${iotauth}" -cf - . \
+  | tar -C "${source_copy}" -xf -
 "${python}" "${root}/sst/scripts/render_graph.py" \
   --source "${root}/sst/configs/safe_agent_actuation.graph" \
   --output "${source_copy}/examples/configs/safe_agent_actuation.graph" \
@@ -84,4 +114,3 @@ for path in sorted(Path(sys.argv[1]).glob("*.config")):
 PY
 chmod -R go-rwx "${runtime}/credentials" "${runtime}/database" "${password_file}"
 echo "Generated SST runtime state under ${runtime} with RelativeValidity=${validity}"
-

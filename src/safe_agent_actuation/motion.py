@@ -8,6 +8,7 @@ than being allowed to propagate toward the actuator.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -32,7 +33,7 @@ def _blocked(reason: str, *, threshold: float, names: Sequence[str] = ()) -> Mot
     )
 
 
-def _as_float_array(value: ArrayLike, name: str) -> tuple[np.ndarray | None, str | None]:
+def _as_float_array(value: object, name: str) -> tuple[np.ndarray | None, str | None]:
     try:
         return np.asarray(value, dtype=np.float64), None
     except (TypeError, ValueError, OverflowError):
@@ -94,11 +95,11 @@ def _score_and_classify(
 
 
 def analyze_motion(
-    action_chunk: ArrayLike,
-    current_state: ArrayLike,
-    lower_limits: ArrayLike,
-    upper_limits: ArrayLike,
-    threshold: float,
+    action_chunk: object,
+    current_state: object,
+    lower_limits: object,
+    upper_limits: object,
+    threshold: object,
     dimension_names: Sequence[str] | None = None,
 ) -> MotionAnalysis:
     """Compute the paper's normalized joint-motion score.
@@ -114,7 +115,7 @@ def analyze_motion(
     """
 
     try:
-        threshold_value = float(threshold)
+        threshold_value = float(cast(Any, threshold))
     except (TypeError, ValueError, OverflowError):
         threshold_value = float("nan")
     if not np.isfinite(threshold_value) or threshold_value < 0:

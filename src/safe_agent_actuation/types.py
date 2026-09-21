@@ -2,7 +2,7 @@
 
 The classes in this module deliberately contain no key material and avoid
 including large action arrays in their representations.  They are suitable for
-records and for the boundaries between the monitor and simulated actuator.
+records and for the boundaries between the Monitor and recording Actuator harness.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ class RiskClassification(StrEnum):
 
 
 class ActuatorDecision(StrEnum):
-    """Whether the simulated actuator executed or held its pose."""
+    """Whether the recording Actuator harness executed or held its pose."""
 
     EXECUTE = "execute"
     HOLD = "hold"

@@ -32,11 +32,11 @@ DEFAULT_ALOHA_TASK = "gym_aloha/AlohaTransferCube-v0"
 
 
 class PolicyLike(Protocol):
-    def infer(self, observation: Mapping[str, Any], **kwargs: Any) -> Mapping[str, Any]: ...
+    def infer(self, observation: Any, **kwargs: Any) -> Mapping[str, Any]: ...
 
 
 class ActuatorLike(Protocol):
-    def actuate(self, envelope: Any, current_state: ArrayLike) -> Any: ...
+    def actuate(self, envelope: Any, current_state: Any) -> Any: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -375,7 +375,7 @@ class ControlledAlohaClient:
             return ControlledActuation(
                 response=response,
                 current_state=current_state,
-                proposed_shape=tuple(chunk.shape),
+                proposed_shape=(int(chunk.shape[0]), int(chunk.shape[1])),
                 executed_horizon=0,
                 actuator_result=actuator_result,
                 blocked_before_monitor=False,
@@ -391,7 +391,7 @@ class ControlledAlohaClient:
         return ControlledActuation(
             response=response,
             current_state=current_state,
-            proposed_shape=tuple(chunk.shape),
+            proposed_shape=(int(chunk.shape[0]), int(chunk.shape[1])),
             executed_horizon=executed,
             actuator_result=actuator_result,
             blocked_before_monitor=False,

@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import NDArray
 
 COURSE_CONFIG_NAME = "pi0_fast_aloha_sim_course"
 MODEL_FAMILY = "pi0-FAST"
@@ -60,7 +60,7 @@ class InvalidPolicyResponse(ValueError):
 class PolicyLike(Protocol):
     """Dependency-light policy protocol used by the recorder and tests."""
 
-    def infer(self, observation: Mapping[str, Any], **kwargs: Any) -> Mapping[str, Any]: ...
+    def infer(self, observation: Any, **kwargs: Any) -> Mapping[str, Any]: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -157,7 +157,7 @@ def extract_fast_action_tokens(
 
 
 def _strict_decoded_chunk(
-    value: ArrayLike,
+    value: object,
     *,
     expected_shape: tuple[int, int],
     field_name: str,
@@ -504,7 +504,8 @@ def create_observable_fast_policy(
 
     Calling this function can trigger a large first-run checkpoint download.
     It does not assert that ``pi0_fast_base`` is behaviorally compatible with
-    ALOHA simulation; that unresolved compatibility is a release blocker.
+    ALOHA simulation. That unresolved compatibility limits this optional
+    instructor probe and does not block the fixture-based graded release.
     """
 
     from openpi.policies import policy_config  # type: ignore[import-not-found]

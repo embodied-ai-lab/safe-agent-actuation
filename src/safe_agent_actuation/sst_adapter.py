@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -45,9 +46,15 @@ def context_to_sst(context: Mapping[str, object]) -> dict[str, object]:
     permitted_time = context["permitted_time"]
     task_name = context["task_name"]
     robot_id = context["robot_id"]
-    text_fields = (location, permitted_time, task_name, robot_id)
-    if not all(isinstance(value, str) and value for value in text_fields):
+    if not all(
+        isinstance(value, str) and bool(value)
+        for value in (location, permitted_time, task_name, robot_id)
+    ):
         raise SSTAdapterError("context string fields must be non-empty strings")
+    assert isinstance(location, str)
+    assert isinstance(permitted_time, str)
+    assert isinstance(task_name, str)
+    assert isinstance(robot_id, str)
     if isinstance(people, bool) or not isinstance(people, int) or people < 0:
         raise SSTAdapterError("nearby_people must be a non-negative integer")
     try:
@@ -150,6 +157,16 @@ class SSTSendResult:
     total_latency_ms: float
     reason: str
     key_id: str | None = None
+    # ``authorized`` is retained for the course-facing API.  The structured
+    # status prevents an Auth policy rejection from being confused with a
+    # missing Auth process, malformed response, or other infrastructure fault.
+    authorization_status: str = "allowed"
+    key_request_attempts: int = 0
+    successful_key_requests: int = 0
+    transfer_attempted: bool = False
+    auth_error_type: str | None = None
+    auth_alert_code: int | None = None
+    transfer_error_type: str | None = None
 
 
 @dataclass(frozen=True)
@@ -159,6 +176,7 @@ class SSTReceiveResult:
     receive_decryption_latency_ms: float
     reason: str
     payload: dict[str, Any] | None = None
+    receive_error_type: str | None = None
 
 
 class SSTMonitorTransport:
@@ -180,7 +198,9 @@ class SSTMonitorTransport:
         self.clock_ms = clock_ms or (lambda: int(time.time() * 1000))
         self._ctx: Any = None
         self._cached_key: Any = None
+        self.key_request_attempts = 0
         self.key_requests = 0
+        self.key_reuses = 0
 
     def _load(self) -> tuple[Any, Any]:
         try:
@@ -224,9 +244,13 @@ class SSTMonitorTransport:
         ctx, secure_client_type = self._load()
         reused = session_key_valid(self._cached_key, now_ms=self.clock_ms())
         auth_ms = 0.0
+        request_attempts = 0
+        successful_requests = 0
         if not reused:
             self._cached_key = None
             auth_start = time.perf_counter()
+            self.key_request_attempts += 1
+            request_attempts = 1
             try:
                 keys = ctx.request_session_keys(
                     purpose={"group": "Actuators", "context": context_to_sst(context)},
@@ -235,6 +259,16 @@ class SSTMonitorTransport:
                 )
             except Exception as exc:
                 auth_ms = (time.perf_counter() - auth_start) * 1000
+                error_type = type(exc).__name__
+                # At the pinned IoTAuth revision, Auth's controlled context
+                # rejection is surfaced by the Python entity as protocol alert
+                # 1 ("invalid session key request").  Alert 1 is still checked
+                # against the locally known policy outcome by orchestration;
+                # it is not, on its own, proof of a policy denial.
+                match = re.search(r"\balert\s+(\d+)\b", str(exc), re.IGNORECASE)
+                alert_code = int(match.group(1)) if match else None
+                rejected = error_type == "AuthProtocolError" and alert_code == 1
+                detail = " ".join(str(exc).split())[:300]
                 return SSTSendResult(
                     authorized=False,
                     sent=False,
@@ -243,10 +277,21 @@ class SSTMonitorTransport:
                     handshake_latency_ms=0.0,
                     encryption_send_latency_ms=0.0,
                     total_latency_ms=(time.perf_counter() - start) * 1000,
-                    reason=f"authorization denied or unavailable: {type(exc).__name__}",
+                    reason=(
+                        "Auth rejected the session-key request (protocol alert 1)"
+                        if rejected
+                        else f"session-key request failed: {error_type}"
+                        + (f": {detail}" if detail else "")
+                    ),
+                    authorization_status=(
+                        "auth_rejected_request" if rejected else "infrastructure_error"
+                    ),
+                    key_request_attempts=request_attempts,
+                    successful_key_requests=0,
+                    auth_error_type=error_type,
+                    auth_alert_code=alert_code,
                 )
             auth_ms = (time.perf_counter() - auth_start) * 1000
-            self.key_requests += 1
             if not keys or not session_key_valid(keys[0], now_ms=self.clock_ms()):
                 return SSTSendResult(
                     authorized=False,
@@ -257,10 +302,19 @@ class SSTMonitorTransport:
                     encryption_send_latency_ms=0.0,
                     total_latency_ms=(time.perf_counter() - start) * 1000,
                     reason="Auth returned no currently valid session key",
+                    authorization_status="infrastructure_error",
+                    key_request_attempts=request_attempts,
+                    successful_key_requests=0,
+                    auth_error_type="InvalidSessionKeyResponse",
                 )
             self._cached_key = keys[0]
+            self.key_requests += 1
+            successful_requests = 1
+        else:
+            self.key_reuses += 1
 
         handshake_start = time.perf_counter()
+        channel: Any = None
         try:
             client = secure_client_type(
                 ctx,
@@ -274,7 +328,6 @@ class SSTMonitorTransport:
             send_start = time.perf_counter()
             channel.send(payload)
             send_ms = (time.perf_counter() - send_start) * 1000
-            channel.close()
         except Exception as exc:
             return SSTSendResult(
                 authorized=True,
@@ -286,7 +339,21 @@ class SSTMonitorTransport:
                 total_latency_ms=(time.perf_counter() - start) * 1000,
                 reason=f"secure transfer failed: {type(exc).__name__}",
                 key_id=getattr(self._cached_key, "id", b"").hex() or None,
+                authorization_status="allowed",
+                key_request_attempts=request_attempts,
+                successful_key_requests=successful_requests,
+                transfer_attempted=True,
+                transfer_error_type=type(exc).__name__,
             )
+        finally:
+            if channel is not None:
+                try:
+                    channel.close()
+                except Exception:
+                    # Whether payload delivery completed is already captured by
+                    # ``channel.send``.  A cleanup fault must not replace that
+                    # outcome, and no secret-bearing exception text is emitted.
+                    pass
         return SSTSendResult(
             authorized=True,
             sent=True,
@@ -297,6 +364,10 @@ class SSTMonitorTransport:
             total_latency_ms=(time.perf_counter() - start) * 1000,
             reason="authorized and sent through an authenticated SST channel",
             key_id=getattr(self._cached_key, "id", b"").hex() or None,
+            authorization_status="allowed",
+            key_request_attempts=request_attempts,
+            successful_key_requests=successful_requests,
+            transfer_attempted=True,
         )
 
 
@@ -317,7 +388,33 @@ class SSTActuatorTransport:
         self.port = int(port)
         self.accept_timeout = float(accept_timeout)
         self.handshake_timeout = float(handshake_timeout)
+        # Keep one entity context for the lifetime of this transport.  The
+        # context owns the actuator's in-memory session-key cache; rebuilding
+        # it for every connection makes a reused monitor key look unknown and
+        # causes the actuator to ask Auth to add the same owner twice.
+        self._ctx: Any = None
         self._server: Any = None
+
+    def _load(self) -> tuple[Any, Any]:
+        try:
+            from iotauth import IoTAuthContext, SecureServer
+        except ImportError as exc:
+            raise SSTAdapterError(
+                "iotauth is unavailable. Install third_party/iotauth/entity/python"
+            ) from exc
+        if self._ctx is None:
+            self._ctx = IoTAuthContext.from_config(self.config_path)
+        return self._ctx, SecureServer
+
+    def _new_server(self) -> Any:
+        ctx, secure_server_type = self._load()
+        return secure_server_type(
+            ctx,
+            host=self.host,
+            port=self.port,
+            accept_timeout=self.accept_timeout,
+            handshake_timeout=self.handshake_timeout,
+        )
 
     def listen(self) -> None:
         """Bind the actuator port before a sender starts, avoiding a race.
@@ -327,22 +424,9 @@ class SSTActuatorTransport:
         immediately afterwards cannot be refused by an unbound port.
         """
 
-        try:
-            from iotauth import IoTAuthContext, SecureServer
-        except ImportError as exc:
-            raise SSTAdapterError(
-                "iotauth is unavailable. Install third_party/iotauth/entity/python"
-            ) from exc
         if self._server is not None:
             return
-        ctx = IoTAuthContext.from_config(self.config_path)
-        server = SecureServer(
-            ctx,
-            host=self.host,
-            port=self.port,
-            accept_timeout=self.accept_timeout,
-            handshake_timeout=self.handshake_timeout,
-        )
+        server = self._new_server()
         server.listen()
         self._server = server
 
@@ -352,28 +436,18 @@ class SSTActuatorTransport:
             server.close()
 
     def receive_once(self) -> SSTReceiveResult:
-        try:
-            from iotauth import IoTAuthContext, SecureServer
-        except ImportError as exc:
-            raise SSTAdapterError(
-                "iotauth is unavailable. Install third_party/iotauth/entity/python"
-            ) from exc
         start = time.perf_counter()
         server = None
         channel = None
         try:
             if self._server is not None:
-                server, self._server = self._server, None
+                # Keep the shared reference while ``accept`` is in progress so
+                # orchestration can cancel an unneeded receiver with close().
+                server = self._server
             else:
-                ctx = IoTAuthContext.from_config(self.config_path)
-                server = SecureServer(
-                    ctx,
-                    host=self.host,
-                    port=self.port,
-                    accept_timeout=self.accept_timeout,
-                    handshake_timeout=self.handshake_timeout,
-                )
+                server = self._new_server()
                 server.listen()
+                self._server = server
             channel = server.serve_once()
             receive_start = time.perf_counter()
             raw = channel.recv(timeout=self.handshake_timeout)
@@ -388,21 +462,29 @@ class SSTActuatorTransport:
             )
         except Exception as exc:
             elapsed = (time.perf_counter() - start) * 1000
+            # Preserve a bounded single-line library diagnostic in the trial
+            # artifact.  This includes useful nested handshake/Auth context
+            # (for example, duplicate-owner rejection) without dumping an
+            # exception traceback or any key bytes.
+            detail = " ".join(str(exc).split())[:500]
+            suffix = f": {detail}" if detail else ""
             return SSTReceiveResult(
                 authenticated=False,
                 received=False,
                 receive_decryption_latency_ms=elapsed,
-                reason=f"protected receive rejected: {type(exc).__name__}",
+                reason=f"protected receive rejected: {type(exc).__name__}{suffix}",
+                receive_error_type=type(exc).__name__,
             )
         finally:
             if channel is not None:
                 channel.close()
             if server is not None:
                 server.close()
+                if self._server is server:
+                    self._server = None
 
 
 def finite_latency(value: float) -> bool:
     """Small schema helper used by live-record validation."""
 
     return isinstance(value, (int, float)) and math.isfinite(value) and value >= 0
-

@@ -5,6 +5,20 @@
   "high-risk-allow": {"source": "diagnostic_synthetic", "fixture": "high_risk.npz", "context": "allowed"},
   "high-risk-deny": {"source": "diagnostic_synthetic", "fixture": "high_risk.npz", "context": "denied"},
   "bypass": {"source": "diagnostic_synthetic", "fixture": "high_risk.npz", "context": "allowed"},
-  "threshold-sweep": {"source": "diagnostic_synthetic", "thresholds": [0.02, 0.05, 0.1, 0.2]},
+  "threshold-sweep": {
+    "source": "diagnostic_synthetic",
+    "thresholds": [0.02, 0.05, 0.1, 0.2],
+    "repetitions": 3,
+    "warmup_repetitions": 1,
+    "cache_scope": "per_case_per_threshold",
+    "cases": [
+      {"id": "calm-allowed", "fixture": "calm", "context": "allowed"},
+      {"id": "low-risk-denied", "fixture": "low_risk", "context": "denied"},
+      {"id": "moderate-allowed", "fixture": "moderate", "context": "allowed"},
+      {"id": "boundary-denied", "fixture": "boundary", "context": "denied"},
+      {"id": "high-risk-allowed", "fixture": "high_risk", "context": "allowed"},
+      {"id": "high-risk-denied", "fixture": "high_risk", "context": "denied"}
+    ]
+  },
   "grad-key-validity": {"source": "diagnostic_synthetic", "validity_seconds": [0.05, 0.2, 1.0]}
 }

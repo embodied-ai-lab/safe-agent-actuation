@@ -26,7 +26,11 @@ test -f "${root}/runtime/sst/auth-build/source/auth/auth-server/target/auth-serv
 periods="${SST_KEY_VALIDITY_PERIODS:-5*sec 20*sec 40*sec}"
 
 mkdir -p "${results}"
-rm -f "${results}/live_trials.jsonl"
+rm -f \
+  "${results}/live_trials.jsonl" \
+  "${results}/trials.csv" \
+  "${results}/summary.json" \
+  "${results}/key_validity.png"
 
 cleanup() {
   "${auth}" stop >/dev/null 2>&1 || true

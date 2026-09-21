@@ -12,6 +12,7 @@ import json
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -152,7 +153,7 @@ def build_moderate(limits: PhysicalLimits) -> FixtureSpec:
         current_state=state,
         limits=limits,
         source=FixtureSource.DIAGNOSTIC_SYNTHETIC,
-        description="Moderate deterministic elbow motion between sweep thresholds",
+        description="Moderate deterministic elbow motion between evaluation thresholds",
         metadata={"scenario": "threshold-sweep", "executed_horizon": EXECUTED_HORIZON},
     )
     return FixtureSpec(
@@ -160,7 +161,7 @@ def build_moderate(limits: PhysicalLimits) -> FixtureSpec:
         fixture=fixture,
         expected_score_low=0.065,
         expected_score_high=0.075,
-        purpose="Separates the 0.05 and 0.10 thresholds in the sweep",
+        purpose="Separates the 0.05 and 0.10 thresholds in the multi-threshold evaluation",
     )
 
 
@@ -216,7 +217,7 @@ def _verified_score(spec: FixtureSpec) -> float:
     return analysis.motion_score
 
 
-def metadata_record(spec: FixtureSpec) -> dict[str, object]:
+def metadata_record(spec: FixtureSpec) -> dict[str, Any]:
     """The JSON companion record required for every committed fixture."""
 
     action = np.asarray(spec.fixture.action_chunk)

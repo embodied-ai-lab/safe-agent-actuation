@@ -23,6 +23,7 @@ from safe_agent_actuation.scenarios import (
     run_bypass,
     run_high_risk_live,
 )
+from safe_agent_actuation.sweeps import SweepCase, run_threshold_sweep
 
 pytestmark = pytest.mark.live_sst
 
@@ -92,3 +93,35 @@ def test_context_mapping_matches_policy():
     limits = load_physical_limits(root())
     assert limits.dimensions == 14
     assert np.asarray(limits.lower).shape == (14,)
+
+
+def test_small_threshold_sweep_uses_real_sst_and_measured_reuse(tmp_path):
+    result = run_threshold_sweep(
+        root(),
+        tmp_path,
+        thresholds=(0.1,),
+        cases=(
+            SweepCase("high-risk-allowed", "high_risk", "allowed"),
+            SweepCase("high-risk-denied", "high_risk", "denied"),
+        ),
+        repetitions=2,
+        warmup_repetitions=1,
+    )
+
+    assert result["mode"] == "live_sst"
+    assert len(result["warmup_trials"]) == 2
+    assert len(result["trials"]) == 4
+    aggregate = result["threshold_aggregates"][0]
+    assert aggregate["high_risk_count"] == 4
+    assert aggregate["authorization_activity_count"] == 4
+    assert aggregate["key_request_attempts"] == 3
+    assert aggregate["successful_key_requests"] == 1
+    assert aggregate["key_reuses"] == 1
+    assert aggregate["authorization_allowed_count"] == 2
+    assert aggregate["authorization_denied_count"] == 2
+    assert aggregate["controlled_policy_denial_count"] == 2
+    assert aggregate["transfer_attempts"] == 2
+    assert aggregate["transfer_successes"] == 2
+    assert aggregate["failed_trial_count"] == 0
+    assert aggregate["latency_sample_count"] == 4
+    assert aggregate["observed_max_monitor_to_actuator_ms"] >= 0.0

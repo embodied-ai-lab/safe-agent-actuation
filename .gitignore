@@ -1,0 +1,62 @@
+# Generated SST credentials, keys, databases, properties, PIDs, and logs
+runtime/
+
+# Experiment results. Keep only the directory marker.
+results/*
+!results/.gitkeep
+
+# Credentials and databases must never be tracked, even outside runtime.
+*.pem
+*.der
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.csr
+*.srl
+*.db
+*.sqlite
+*.sqlite3
+
+# Model weights and caches
+*.safetensors
+*.bin
+*.onnx
+*.pt
+*.pth
+checkpoints/
+models/
+.cache/
+
+# Containers
+*.sif
+*.simg
+
+# Python and tools
+.venv/
+.venv-openpi/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.pyright/
+build/
+dist/
+
+# Submission products
+submission/answers.md
+submission/*.zip
+submission/.*.tmp
+.student-template-manifest
+
+# Instructor-only disposable validation workspaces and job records
+.validation/
+
+# Editor and OS files
+.vscode/
+.idea/
+*.swp
+.DS_Store

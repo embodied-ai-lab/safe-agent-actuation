@@ -2,9 +2,11 @@ SHELL := /bin/bash
 ROOT := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 PY ?= $(if $(wildcard $(ROOT)/.venv/bin/python3),$(ROOT)/.venv/bin/python3,python3.11)
 GROUPID ?=
+REQUIRE_GRAD ?= 0
 THRESHOLD ?= 0.1
 
 export SAFE_ACTUATION_ROOT := $(ROOT)
+export PYTHONDONTWRITEBYTECODE := 1
 
 .DEFAULT_GOAL := help
 
@@ -30,7 +32,28 @@ build: ## CPU compute: build the reproducible Apptainer image, no model weights
 
 .PHONY: test-offline
 test-offline: ## Fixture only: run the public model-free tests, no SST or GPU
-	@$(PY) -m pytest -q -m "not live_openpi and not live_sst and not sol_validation"
+	@PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 $(PY) -m pytest -q \
+		-m "not live_openpi and not live_sst and not sol_validation"
+
+.PHONY: test-baseline
+test-baseline: ## Starter-safe: test supplied infrastructure and Part 1 without graded TODOs
+	@PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 $(PY) -m pytest -q \
+		tests/test_captured.py \
+		tests/test_context.py \
+		tests/test_fixtures.py \
+		tests/test_openpi_adapter.py \
+		tests/test_protection.py \
+		tests/test_records.py \
+		tests/test_setup.py \
+		tests/test_simulator.py \
+		tests/test_sst_adapter.py
+
+.PHONY: test-acceptance
+test-acceptance: ## Exercises: test all five graded TODO regions; starter failures are intentional
+	@PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 $(PY) -m pytest -q \
+		tests/test_motion.py \
+		tests/test_actuator.py \
+		tests/test_enforcement.py
 
 .PHONY: test-sst
 test-sst: ## SST: test the pinned Python API and course live integration, Auth state required for marked tests
@@ -41,7 +64,7 @@ inspect-actions: ## Part 1: report the available pi0-FAST response, its tokens, 
 	@$(PY) -m safe_agent_actuation.cli inspect-actions
 
 .PHONY: low-risk
-low-risk: ## Fixture: run the trusted low-risk path in the simulator harness, no SST
+low-risk: ## Fixture: run the trusted low-risk path in the recording actuator harness, no SST
 	@$(PY) -m safe_agent_actuation.cli scenario low-risk --threshold $(THRESHOLD)
 
 .PHONY: high-risk-allow
@@ -69,11 +92,15 @@ bypass-offline: ## Offline diagnostic: in-process bypass rejection without SST, 
 	@$(PY) -m safe_agent_actuation.cli scenario bypass --offline-diagnostic --threshold $(THRESHOLD)
 
 .PHONY: threshold-sweep
-threshold-sweep: ## Fixed fixtures: compare thresholds and latency without repeating live inference
+threshold-sweep: ## Part 4 real SST: fixed-pair multi-threshold evaluation and measured latency, Auth required
 	@$(PY) -m safe_agent_actuation.cli threshold-sweep
 
+.PHONY: threshold-sweep-offline
+threshold-sweep-offline: ## Offline diagnostic: fixed-pair policy model, explicitly not live SST
+	@$(PY) -m safe_agent_actuation.cli threshold-sweep --offline-diagnostic
+
 .PHONY: grad-key-validity
-grad-key-validity: ## CSE 598 real SST: three relative validity periods and context-change windows, Auth required
+grad-key-validity: ## CSE 598 real SST: exact 5/20/40-second validity periods and context-change windows, Auth required
 	@$(ROOT)/sst/scripts/key_validity.sh
 
 .PHONY: grad-key-validity-offline
@@ -97,9 +124,11 @@ auth-stop: ## SST: stop only the Auth PID recorded under runtime/sst
 	@$(ROOT)/sst/scripts/auth.sh stop
 
 .PHONY: submission
-submission: ## Packaging: build one allowlisted ZIP, requires GROUPID, no Git and no model weights
-	@test -n "$(GROUPID)" || { echo "usage: make submission GROUPID=<groupid>" >&2; exit 2; }
-	@$(PY) $(ROOT)/scripts/make_submission.py --groupid "$(GROUPID)"
+submission: ## Packaging: build one allowlisted ZIP; CSE 598 also sets REQUIRE_GRAD=1
+	@test -n "$(GROUPID)" || { echo "usage: make submission GROUPID=<groupid> [REQUIRE_GRAD=1]" >&2; exit 2; }
+	@test "$(REQUIRE_GRAD)" = "0" -o "$(REQUIRE_GRAD)" = "1" || { echo "REQUIRE_GRAD must be 0 or 1" >&2; exit 2; }
+	@$(PY) $(ROOT)/scripts/validate_results.py $(if $(filter 1,$(REQUIRE_GRAD)),--require-grad,) $(ROOT)/results
+	@$(PY) $(ROOT)/scripts/make_submission.py --groupid "$(GROUPID)" $(if $(filter 1,$(REQUIRE_GRAD)),--require-grad,)
 
 .PHONY: lint
 lint: ## Offline: run Ruff on the course-maintained Python code
@@ -108,4 +137,3 @@ lint: ## Offline: run Ruff on the course-maintained Python code
 .PHONY: clean
 clean: ## DELETES generated results, runtime SST secrets/state, caches, and local environments
 	@$(ROOT)/scripts/clean.sh
-

@@ -17,7 +17,18 @@ test -f "${auth_dir}/pom.xml" || { echo "Run make submodules" >&2; exit 2; }
 mkdir -p "$(dirname "${log}")"
 rm -rf "${build_root}"
 mkdir -p "${build_source}"
-git -C "${root}/third_party/iotauth" archive HEAD | tar -x -C "${build_source}"
+# Build from an isolated filesystem copy so Maven never writes into the pinned
+# dependency.  Metadata and generated/cached files are excluded explicitly;
+# no Git command is needed to prepare the copy.
+tar \
+  --exclude='./.git' \
+  --exclude='*/.git' \
+  --exclude='*/target' \
+  --exclude='*/node_modules' \
+  --exclude='*/__pycache__' \
+  --exclude='*.pyc' \
+  -C "${root}/third_party/iotauth" -cf - . \
+  | tar -C "${build_source}" -xf -
 mvn -B -q package -DskipTests --file "${build_source}/auth/pom.xml" >"${log}" 2>&1 || {
   tail -n 40 "${log}" >&2
   exit 1

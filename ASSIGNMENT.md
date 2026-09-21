@@ -1,13 +1,23 @@
 # Safe Agent Actuation: Analyzing and Authorizing VLA Actions
 
+CSE 494/598 · 4 points (common) + 1 point (CSE 598 extension) ·
+estimated 4–6 hours after setup
+
+Record every answer in `submission/answers.md` (copy
+[`submission/answers_template.md`](submission/answers_template.md)). Keep
+answers short—numbers, one-liners, and compact tables are better than essays.
+
 Vision language action (VLA) models turn a camera image and a text instruction
 into robot motion. This assignment builds a safety layer in front of one such
-model. You observe how a pi0-FAST policy produces action tokens, separate those
-raw tokens from the decoded physical action, measure how much the robot is about
-to move, classify the motion as low risk or high risk, and require context based
-authorization before any high-risk action reaches a simulated actuator. The
+model. You inspect token availability and verified FAST decode-boundary evidence
+in a genuine pi0-FAST response, distinguish token representations from decoded
+physical actions, measure how much the robot is about to move, classify the
+motion as low risk or high risk, and require context-based authorization before
+any high-risk action reaches the recording actuator harness. The
 authorization and delivery path uses the Secure Swarm Toolkit (SST) from the
-IoTAuth project. Everything runs in simulation. You never control a real robot.
+IoTAuth project. The graded actuator is a deterministic EXECUTE/HOLD recording
+harness; it does not simulate robot dynamics or claim task success. You never
+control a real robot.
 
 This work is graded out of **4 common points for CSE 494 and CSE 598**, plus
 **1 additional point for CSE 598 only**. The additional point is Part 5. Submit
@@ -45,11 +55,15 @@ regions are marked in the source with `TODO(student)` comments.
 
 This project uses two clearly separated sources.
 
-The **pi0-FAST response record** is what Part 1 reads. It describes one
-pi0-FAST response: whether action tokens are exposed, how many there are, the
-decoded model-space shape, the final action shape, and timing. `make
-inspect-actions` writes it to `results/inspect-actions/response_summary.json`
-and labels its `action_source`.
+The **pi0-FAST response record** is what Part 1 reads. It contains a genuine
+response captured by the instructor from the documented `pi0_fast_droid`
+expert and OpenPI's documented example observation. It records whether the
+standard API exposed action tokens, the actual returned action shape, decode
+status, timing, input origin, and checksum. `make inspect-actions` validates
+the committed JSON/NPZ pair, writes
+`results/inspect-actions/response_summary.json`, and labels its
+`action_source`. A missing, partial, or corrupted capture is an error; an
+explicit configuration-only diagnostic is not a substitute for Part 1.
 
 The **ALOHA action fixtures** under `data/fixtures/` drive Parts 2 through 5.
 They are deterministic 14-dimensional ALOHA command chunks with known physical
@@ -69,16 +83,18 @@ See `README.md` for the full Sol workflow. In short:
 2. Set `SIF` to the course image, or build one with
    `slurm/build_container.sbatch`.
 3. Inside the container run `make setup` then `make doctor`.
-4. Run `make test-offline` and `make lint` to confirm a clean baseline.
+4. Run `make test-baseline` and `make lint` to confirm a clean starter.
 
 ## Part 0: Setup (required, ungraded)
 
 1. Set up the Sol environment and initialize dependencies.
 2. Confirm `make doctor` reports the expected submodule pins.
-3. Run `make test-offline`. The provided component tests pass. The graded
-   acceptance tests fail until you complete the `TODO(student)` regions, which
-   is the expected starting state.
-4. Run `make lint` and confirm Ruff is clean.
+3. Run `make test-baseline`; the supplied infrastructure checks must pass.
+4. Run `make test-acceptance` once to see the useful failures for the five
+   `TODO(student)` regions. Those failures are intentional in the untouched
+   starter. After implementing Parts 2 and 3, both `make test-acceptance` and
+   `make test-offline` must pass.
+5. Run `make lint` and confirm Ruff is clean.
 
 ## Part 1: Tokens and decoded actions (1 point)
 
@@ -88,21 +104,30 @@ Run `make inspect-actions` and read
 Report:
 
 1. The `action_source` of the record you read, and what that source means.
+   Also report the model configuration, checkpoint, OpenPI revision, and input
+   origin recorded with it.
 2. Whether action tokens are available, and the token count when they are.
    When they are not available, state that plainly and give the reason the
    record provides.
-3. The decoded model action shape and the final action shape.
-4. The executed horizon and how it relates to the predicted horizon.
-5. How the 14 ALOHA output dimensions map to arm joints and grippers. Use
-   `configs/motion/aloha_limits.json`.
+3. The actual action array shape returned by the policy and any separate
+   decoded-model shape the API genuinely exposes. Do not infer an internal
+   shape from the final array.
+4. The configured horizon, the captured response horizon, and the fact that no
+   captured action was executed.
+5. Separately, how the 14 ALOHA fixture dimensions used in Parts 2 through 5
+   map to arm joints and grippers. Use `configs/motion/aloha_limits.json`; do
+   not describe the 8-dimensional DROID capture as ALOHA.
 6. Why physical risk is assessed after FAST decoding rather than from raw token
    identifiers. Explain what a token identifier is and is not.
 7. Any inference and decode latency the record reports, or a note that the
-   record does not include timing.
+   standard response does not separately expose decode timing.
+8. The recorded action-array checksum and why it matters.
 
 You are not graded on a specific token sequence, and you are not penalized for
-token identifiers being unavailable. You are graded on reading the record
-correctly and explaining the difference between tokens and decoded actions.
+token identifiers being unavailable from the pinned standard response. You are
+graded on reading the genuine record correctly and explaining the difference
+between tokens and decoded actions. Configuration-only output does not satisfy
+this part.
 
 ## Part 2: Motion-risk analysis (1 point)
 
@@ -134,8 +159,8 @@ Demonstrate:
 
 1. A high-risk action with the allowed context is authorized, protected,
    transferred, verified at the actuator, and executed: `make high-risk-allow`.
-2. A high-risk action with the denied context is refused, and no executable
-   action reaches the simulator: `make high-risk-deny`.
+2. A high-risk action with the denied context is refused, and the recording
+   harness records HOLD with no execution: `make high-risk-deny`.
 3. A direct unauthenticated attempt on the actuator port is rejected:
    `make bypass`.
 4. The actuator holds its pose on any denied, malformed, expired, or
@@ -145,20 +170,40 @@ Demonstrate:
 
 You must not edit OpenPI or IoTAuth to complete this part.
 
-## Part 4: Threshold and latency tradeoff (1 point)
+## Part 4: Multi-threshold authorization and latency evaluation (1 point)
 
-Use the fixed committed fixture set for every threshold. Do not run new model
-inference per threshold. Run `make threshold-sweep`.
+This is a controlled multi-threshold evaluation: vary the risk threshold while
+keeping the committed fixture/context pairs, order, repetition count, and
+per-case cache scope for every threshold. Do not run new model inference per
+threshold. Keep Auth running and run `make threshold-sweep`; the accepted
+command uses real SST for high-risk classifications and the trusted local path
+for low-risk classifications. `make threshold-sweep-offline` is only a
+development diagnostic.
 
 Report:
 
-1. Each threshold and the resulting high-risk rate.
-2. The authorization active rate at each threshold.
-3. The allowed and denied counts.
-4. The average and worst monitor-to-actuator latency.
-5. One table or the generated plot.
-6. A concise interpretation that keeps motion classification, policy
+1. Each threshold and the resulting high-risk rate, using all successfully
+   classified measured trials as the denominator.
+2. The authorization-path activity rate at each threshold, using the same
+   classified denominator.
+3. Actual key-request attempts, successful key requests, and key reuse.
+4. Allowed, denied, and infrastructure-error counts; transfer attempts,
+   successful transfers, and failed transfers; and the failed-trial count.
+5. The mean and observed maximum Monitor-to-actuator latency. The timed
+   interval starts when the Monitor receives the action and ends only after the
+   actuator harness records EXECUTE or HOLD. It includes applicable analysis,
+   authorization, handshake, protected delivery, payload checks, and actuator
+   enforcement. Every measured row is retained. Confirmed EXECUTE/HOLD
+   intervals, including policy denials that end in HOLD, contribute to the
+   latency aggregates. A failure before a confirmed decision instead records
+   `elapsed_until_failure_ms`; it cannot supply a complete Monitor-to-actuator
+   interval and is not used in the latency mean or observed maximum.
+6. One table or the generated plot.
+7. A concise interpretation that keeps motion classification, policy
    authorization, and physical safety distinct.
+
+Do not force latency to be monotonic with threshold. The observed maximum is a
+sample statistic, not a formal worst-case bound.
 
 ## Part 5: CSE 598 extension (1 point)
 
@@ -169,14 +214,19 @@ Include:
 
 1. A hypothesis about how relative validity affects the security window and the
    number of key requests.
-2. Results for three validity periods.
+2. Results for the exact ordered relative-validity periods 5, 20, and 40
+   seconds.
 3. A controlled baseline: authorize in the allowed context, reuse the valid key,
    change the context to a denied state, then observe behavior while the key is
    still valid and after it expires.
-4. The key-request and key-reuse counts.
-5. Authorization and transfer latency.
-6. An interpretation of the security window created by key reuse.
-7. One limitation of your evaluation.
+4. Absolute validity, relative validity, and the recorded first-use time.
+5. Attempted and successful key requests, key reuse, transfer attempts, and
+   successful transfers.
+6. Authorization, handshake, and protected-transfer latency.
+7. An interpretation of the security window created by key reuse. A context
+   change does not immediately revoke a still-valid issued key in this
+   experiment.
+8. One limitation of your evaluation.
 
 The extension is part of the same ZIP as the common assignment. No second upload
 is required.
@@ -185,9 +235,12 @@ is required.
 
 Put your written answers in `submission/answers.md`. Copy
 `submission/answers_template.md` and fill in every field. Build the ZIP with
-`make submission GROUPID=<your-group-id>` and upload only that ZIP to Canvas.
+`make submission GROUPID=<your-group-id>` (CSE 494) or `make submission
+GROUPID=<your-group-id> REQUIRE_GRAD=1` (CSE 598), then upload only that ZIP to
+Canvas. The CSE 598 form fails if any required Part 5 artifact is absent.
 The ZIP includes your report, your edited course code, your configuration, your
-fixtures, and the required JSON, JSONL, CSV, NPZ, and PNG results.
+fixtures, and the applicable required JSON, JSONL, CSV, NPZ, and PNG results.
+JSONL is required only for the CSE 598 Part 5 experiment.
 
 ## Rubric
 

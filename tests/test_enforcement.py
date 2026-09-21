@@ -107,6 +107,14 @@ def test_enforce_holds_on_dimension_mismatch():
     assert simulator.execute_count == 0
 
 
+def test_enforce_holds_on_overlong_action_horizon():
+    result, simulator = _enforce(
+        {"run_id": "run", "action_chunk": np.zeros((11, 14))}
+    )
+    assert result.held
+    assert simulator.execute_count == 0
+
+
 def test_enforce_holds_when_action_exceeds_limits():
     action = np.zeros((10, 14))
     action[0, 0] = 100.0
@@ -121,3 +129,14 @@ def test_enforce_holds_on_nonfinite_action():
     result, simulator = _enforce({"run_id": "run", "action_chunk": action})
     assert result.held
     assert simulator.execute_count == 0
+
+
+def test_enforce_holds_on_missing_or_nonnumeric_action() -> None:
+    for payload in (
+        {"run_id": "run"},
+        {"run_id": "run", "action_chunk": [["not-a-number"]]},
+    ):
+        result, simulator = _enforce(payload)
+        assert result.held
+        assert simulator.execute_count == 0
+        assert simulator.hold_count == 1

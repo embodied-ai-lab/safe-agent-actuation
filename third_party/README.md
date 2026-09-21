@@ -28,15 +28,24 @@ Do not edit, patch, or commit files inside either submodule. Do not configure br
 
 The selected dependency is the official Physical Intelligence OpenPI repository. The course uses its π0-FAST implementation, FAST tokenizer and decoder, WebSocket policy interface, and ALOHA simulator support through a course-owned adapter.
 
-The configured checkpoint is:
+Part 1 uses the committed, checksummed response captured from OpenPI's
+published DROID expert:
 
 ```text
-gs://openpi-assets/checkpoints/pi0_fast_base
+configuration: pi0_fast_droid
+checkpoint: gs://openpi-assets/checkpoints/pi0_fast_droid
 ```
 
-It is a fine-tuning base checkpoint, not a published ALOHA simulator expert. The course's zero-shot ALOHA pairing remains a live-validation release blocker. Do not replace it with OpenPI's default ALOHA simulator checkpoint because that checkpoint uses π0 rather than π0-FAST.
+The record is genuine π0-FAST output for its documented DROID input and
+embodiment. It is not an ALOHA command and is never used for Parts 2 through 5.
+Those experiments use the explicitly synthetic 14-dimensional ALOHA fixtures.
+The standard response does not expose token identifiers; the record states
+that limitation instead of inventing tokens.
 
-`make model-setup` is the only command that resolves model weights. It stores them in the scratch cache named by `OPENPI_DATA_HOME`. Model weights are never committed or placed in the submission ZIP.
+The CPU course environment created by `make setup` does not install OpenPI,
+JAX, GPU libraries, or model weights. The OpenPI checkout records provenance
+and supports optional instructor/live work in a separate environment. Model
+weights are never committed or placed in the submission ZIP.
 
 OpenPI source is distributed under Apache-2.0. The pinned repository also contains `LICENSE_GEMMA.txt`. Applicable Gemma model assets and services remain subject to those terms.
 

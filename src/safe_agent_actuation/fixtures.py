@@ -7,7 +7,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -135,7 +135,8 @@ class ActionFixture:
 
     @property
     def action(self) -> np.ndarray:
-        return self.action_chunk
+        # ``__post_init__`` normalizes the public ArrayLike constructor input.
+        return cast(np.ndarray, self.action_chunk)
 
     @property
     def tokens(self) -> tuple[int, ...] | None:
@@ -230,7 +231,7 @@ def load_action_fixture(path: str | Path) -> ActionFixture:
             limits=limits,
             source=_scalar_text(np.asarray(archive[source_key]), source_key),
             description=_scalar_text(np.asarray(archive[description_key]), description_key),
-            raw_fast_token_ids=tokens,
+            raw_fast_token_ids=_tokens(tokens),
             metadata=metadata,
         )
 

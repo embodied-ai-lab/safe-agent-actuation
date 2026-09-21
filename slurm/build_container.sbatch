@@ -2,10 +2,12 @@
 # CPU compute job. Submit from the repository root.
 #
 # Building the image is a fallback. Prefer the course-provided image and set
-# SIF to its path. When you do need to build, supply your account and QoS:
-#   sbatch -A <COURSE_ACCOUNT> -q <COURSE_QOS> slurm/build_container.sbatch
+# SIF to its path. When you do need to build, submit the course-configured job:
+#   sbatch slurm/build_container.sbatch
 #SBATCH --job-name=safe-actuation-build
-#SBATCH --partition=htc
+#SBATCH --account=class_cse494598fall2026
+#SBATCH --partition=public
+#SBATCH --qos=class
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
@@ -30,4 +32,3 @@ mkdir -p "$(dirname "${SIF}")" results
 # scripts/build_container.sh caches OCI layers on scratch and retries the build,
 # which is resilient to intermittent registry-fetch timeouts on compute nodes.
 ./scripts/build_container.sh
-

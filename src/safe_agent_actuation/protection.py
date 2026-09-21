@@ -28,14 +28,19 @@ from .types import (
     MotionAnalysis,
 )
 
+
+class _FallbackInvalidTag(Exception):
+    """Fallback exception type when cryptography is unavailable."""
+
+
+CryptographyInvalidTag: type[BaseException] = _FallbackInvalidTag
 try:  # pragma: no cover - which branch runs depends on the offline environment.
-    from cryptography.exceptions import InvalidTag
+    from cryptography.exceptions import InvalidTag as _ImportedInvalidTag
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    CryptographyInvalidTag = _ImportedInvalidTag
 except ImportError:  # pragma: no cover
     AESGCM = None  # type: ignore[assignment,misc]
-
-    class InvalidTag(Exception):
-        """Fallback name when the optional cryptography package is absent."""
 
 
 Clock = Callable[[], float]
@@ -433,7 +438,7 @@ class AESGCMProtector:
         nonce = bytes(self._nonce_source(12))
         if len(nonce) != 12:
             raise ProtectionError("nonce source did not return exactly 12 bytes")
-        shape = action.shape  # type: ignore[assignment]
+        shape = (int(action.shape[0]), int(action.shape[1]))
         associated_data = _aad(
             version=1,
             algorithm="AES-256-GCM",
@@ -475,7 +480,7 @@ class AESGCMProtector:
             plaintext = AESGCM(key.key).decrypt(
                 envelope.nonce, envelope.ciphertext, associated_data
             )
-        except (InvalidTag, ValueError) as exc:
+        except (CryptographyInvalidTag, ValueError) as exc:
             raise AuthenticationError("protected action authentication failed") from exc
         expected_bytes = int(np.prod(envelope.action_shape)) * 8
         if len(plaintext) != expected_bytes:

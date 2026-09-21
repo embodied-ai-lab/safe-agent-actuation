@@ -39,7 +39,7 @@ def test_fixture_round_trip_is_deterministic_and_labeled(tmp_path: Path) -> None
     assert first.dimension_names == second.dimension_names == ("joint", "gripper")
     np.testing.assert_array_equal(first.action_chunk, second.action_chunk)
     np.testing.assert_array_equal(first.current_state, second.current_state)
-    assert not first.action_chunk.flags.writeable
+    assert not first.action.flags.writeable
 
 
 def test_fixture_preserves_live_token_observability(tmp_path: Path) -> None:
