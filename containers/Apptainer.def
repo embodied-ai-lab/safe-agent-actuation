@@ -21,14 +21,23 @@ From: nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
         libosmesa6 \
         make \
         maven \
-        nodejs \
-        npm \
         openjdk-17-jdk-headless \
         openssl \
         pkg-config \
         unzip \
+        xz-utils \
         zip
     rm -rf /var/lib/apt/lists/*
+
+    # Ubuntu 22.04's Node 12 cannot run IoTAuth's credential generator.
+    # Use the official Node 22 binary (including npm) for Sol's x86-64 nodes.
+    # Checksum source: https://nodejs.org/dist/v22.23.3/SHASUMS256.txt
+    curl -fL https://nodejs.org/dist/v22.23.3/node-v22.23.3-linux-x64.tar.xz \
+        -o /tmp/node.tar.xz
+    echo "df450af89261115ef9f9e3830c3eeb2cc9213b63c720b1af623cb5dcbe2e02de  /tmp/node.tar.xz" \
+        | sha256sum -c -
+    tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
+    rm /tmp/node.tar.xz
 
     curl -LsSf https://astral.sh/uv/0.8.13/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
     UV_PYTHON_INSTALL_DIR=/opt/uv-python uv python install 3.11
@@ -48,6 +57,9 @@ From: nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
     set -eu
     python3.11 -c 'import sys; assert sys.version_info[:2] == (3, 11)'
     python3 -c 'import sys; assert sys.version_info[:2] == (3, 11)'
+    node -e "require('node:assert').strictEqual(typeof require('node:fs').rmSync, 'function')"
+    node --version
+    npm --version
     uv --version
 
 %runscript

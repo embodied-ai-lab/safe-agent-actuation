@@ -363,7 +363,7 @@ The project stops only the Auth process ID it recorded; do not use `pkill`.
 
 ## Optional: run on your own Linux machine
 
-Use Python 3.11 or 3.12, uv, Git, Make, Java 17, Maven, Node.js/npm, OpenSSL,
+Use Python 3.11 or 3.12, uv, Git, Make, Java 17, Maven, Node.js 22 with npm, OpenSSL,
 and ZIP tools. Initialize the submodules and run `make setup`, `make doctor`,
 `make test-baseline`, and `make lint`. Follow the same assignment and experiment
 sequence without the `lab` prefix; run the SST block with `bash` in place of
