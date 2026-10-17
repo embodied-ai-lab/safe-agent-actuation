@@ -17,18 +17,34 @@ risk, require context-based authorization from the Secure Swarm Toolkit (SST)
 before a high-risk action may pass, and enforce the decision at an actuator
 harness. Nothing here controls a real robot.
 
-```text
-instructor pi0-FAST DROID inference           synthetic ALOHA fixtures
-                 |                                      |
-       captured response (Part 1)                       v
-                 |                                  Monitor
-       inspect only; no execution          motion analysis + threshold
-                                                |                |
-                                      trusted low-risk      real-SST high-risk
-                                                |                |
-                                                +-------v--------+
-                                                Actuator harness
-                                          validate, EXECUTE, or HOLD
+```mermaid
+flowchart LR
+    subgraph actuation["Parts 2–5: Analyze and authorize fixture actions"]
+        direction TB
+        fixtures["Synthetic ALOHA action fixtures<br/>and current robot state"]
+        monitor["Monitor<br/>Motion analysis and risk threshold"]
+        sst["SST authorization<br/>Protected delivery if allowed"]
+        actuator["Actuator harness<br/>Validate, EXECUTE, or HOLD"]
+        fixtures --> monitor
+        monitor -->|"Low risk: trusted local path"| actuator
+        monitor -->|"High risk"| sst
+        sst --> actuator
+    end
+
+    subgraph capture["Part 1: Inspect a recorded model response"]
+        direction TB
+        modelInput["Input text instruction<br/>Example camera images and robot state"]
+        model["pi0-FAST DROID inference<br/>Recorded before the lab"]
+        response["Captured response<br/>Inspect only; no execution"]
+        modelInput --> model --> response
+    end
+
+    classDef input fill:#eff6ff,stroke:#2563eb,color:#172554
+    classDef process fill:#f8fafc,stroke:#64748b,color:#0f172a
+    classDef authorization fill:#f5f3ff,stroke:#7c3aed,color:#3b0764
+    class modelInput,fixtures input
+    class model,response,monitor,actuator process
+    class sst authorization
 ```
 
 pi0-FAST internally emits discrete codes, and the FAST decoder turns them into
