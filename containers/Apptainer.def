@@ -32,6 +32,10 @@ From: nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
 
     curl -LsSf https://astral.sh/uv/0.8.13/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
     UV_PYTHON_INSTALL_DIR=/opt/uv-python uv python install 3.11
+    # uv's default executable directory is /root/.local/bin, which is not
+    # available to students. Expose the managed interpreter on the image PATH.
+    ln -s "$(UV_PYTHON_INSTALL_DIR=/opt/uv-python uv python find 3.11)" /usr/local/bin/python3.11
+    ln -s python3.11 /usr/local/bin/python3
 
 %environment
     export MUJOCO_GL=egl
@@ -39,6 +43,12 @@ From: nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
     export UV_PYTHON_INSTALL_DIR=/opt/uv-python
     export UV_CACHE_DIR=/tmp/uv-cache
     export PATH=/usr/local/bin:$PATH
+
+%test
+    set -eu
+    python3.11 -c 'import sys; assert sys.version_info[:2] == (3, 11)'
+    python3 -c 'import sys; assert sys.version_info[:2] == (3, 11)'
+    uv --version
 
 %runscript
     echo "Bind the repository and scratch, then run make setup and make doctor."
