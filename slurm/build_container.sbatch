@@ -1,9 +1,9 @@
 #!/bin/bash
 # CPU compute job. Submit from the repository root.
 #
-# Building the image is a fallback. Prefer the course-provided image and set
-# SIF to its path. When you do need to build, submit the course-configured job:
+# Build the image once before running the experiments:
 #   sbatch slurm/build_container.sbatch
+# Default output: /scratch/$USER/safe-agent-actuation.sif (override with SIF).
 #SBATCH --job-name=safe-actuation-build
 #SBATCH --account=class_cse494598fall2026
 #SBATCH --partition=public

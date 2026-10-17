@@ -6,6 +6,7 @@ estimated 4–6 hours after setup
 Record every answer in `submission/answers.md` (copy
 [`submission/answers_template.md`](submission/answers_template.md)). Keep
 answers short—numbers, one-liners, and compact tables are better than essays.
+For each experimental claim, cite the result file and field that support it.
 
 Vision language action (VLA) models turn a camera image and a text instruction
 into robot motion. This assignment builds a safety layer in front of one such
@@ -24,8 +25,11 @@ This work is graded out of **4 common points for CSE 494 and CSE 598**, plus
 one ZIP for the whole assignment. There is no second upload for the CSE 598
 point.
 
-Default platform is ASU Sol. Use the provided container and Slurm scripts. Do
-not run compute work on a login node.
+ASU Sol is the primary platform. Build the container from
+`containers/Apptainer.def` using the CPU-allocation workflow in
+[README.md](README.md). All graded parts use CPU compute and the committed
+capture; no GPU, live model server, or model download is required. Do not run
+compute work on a login node.
 
 ## Learning objectives
 
@@ -74,31 +78,34 @@ real physical ranges for every commanded dimension.
 Keep the two apart in your report. A fixture is never model output, and the
 response record is never the thing you compute a motion score from.
 
-## Setup
-
-See `README.md` for the full Sol workflow. In short:
-
-1. Clone your group template on Sol and initialize the submodules with
-   `make submodules`.
-2. Set `SIF` to the course image, or build one with
-   `slurm/build_container.sbatch`.
-3. Inside the container run `make setup` then `make doctor`.
-4. Run `make test-baseline` and `make lint` to confirm a clean starter.
-
 ## Part 0: Setup (required, ungraded)
 
-1. Set up the Sol environment and initialize dependencies.
-2. Confirm `make doctor` reports the expected submodule pins.
-3. Run `make test-baseline`; the supplied infrastructure checks must pass.
-4. Run `make test-acceptance` once to see the useful failures for the five
-   `TODO(student)` regions. Those failures are intentional in the untouched
-   starter. After implementing Parts 2 and 3, both `make test-acceptance` and
-   `make test-offline` must pass.
-5. Run `make lint` and confirm Ruff is clean.
+Follow [README.md](README.md#run-on-asu-sol): create a private group repository
+from the public template, clone it into scratch, initialize the submodules,
+build `/scratch/$USER/safe-agent-actuation.sif` in a CPU allocation, and define
+the `lab` wrapper. Use `lab` for project commands on Sol unless you are already
+inside the container. On local Linux, omit the prefix.
+
+```bash
+lab make setup
+lab make doctor
+lab make test-baseline
+lab make lint
+```
+
+Confirm that doctor reports the expected dependency pins, the baseline tests
+pass, and Ruff is clean. Record the compute job ID and container checksum in
+your answers.
+
+Run `lab make test-acceptance` once to inspect the failures for the five
+`TODO(student)` regions. These are intentional in the untouched student
+template and do not block Part 1. After completing Parts 2 and 3,
+`lab make test-acceptance` and `lab make test-offline` must both pass. Submit
+the full batch workflow only after those implementations are complete.
 
 ## Part 1: Tokens and decoded actions (1 point)
 
-Run `make inspect-actions` and read
+Run `lab make inspect-actions` and read
 `results/inspect-actions/response_summary.json`.
 
 Report:
@@ -131,8 +138,9 @@ this part.
 
 ## Part 2: Motion-risk analysis (1 point)
 
-Complete the motion-analysis `TODO(student)` regions in
-`src/safe_agent_actuation/`.
+Complete the three motion-analysis `TODO(student)` regions in
+[`src/safe_agent_actuation/motion.py`](src/safe_agent_actuation/motion.py):
+`_intra_chunk_motion`, `_inter_state_motion`, and `_score_and_classify`.
 
 You must:
 
@@ -148,12 +156,27 @@ You must:
 6. Analyze the low-risk, high-risk, and boundary fixtures and report their
    scores and classifications.
 
-Run `make low-risk` and confirm the trusted low-risk path executes without SST.
+Run `lab make low-risk` and confirm the trusted low-risk path executes without
+SST. Read `results/low-risk/action_record.json` for the motion analysis and
+actuator decision.
 
 ## Part 3: Authorization and actuator enforcement (1 point)
 
-Complete the authorization and enforcement `TODO(student)` regions, then run the
-real SST path on a compute node.
+Complete the two authorization and enforcement `TODO(student)` regions in
+[`src/safe_agent_actuation/scenarios.py`](src/safe_agent_actuation/scenarios.py).
+Then check the completed implementation:
+
+```bash
+lab make test-acceptance
+lab make test-offline
+lab make lint
+```
+
+Run the [README's real SST block](README.md#4-run-the-real-sst-experiments)
+in your CPU allocation. It builds Auth, generates runtime credentials, starts
+Auth, runs the live tests and Parts 3-4, and stops Auth on exit. Keep Auth and
+its clients in that single container session. Commands below use plain `make`
+because they run inside that block.
 
 Demonstrate:
 
@@ -175,7 +198,8 @@ You must not edit OpenPI or IoTAuth to complete this part.
 This is a controlled multi-threshold evaluation: vary the risk threshold while
 keeping the committed fixture/context pairs, order, repetition count, and
 per-case cache scope for every threshold. Do not run new model inference per
-threshold. Keep Auth running and run `make threshold-sweep`; the accepted
+threshold. Run `make threshold-sweep` before leaving the same container session
+used for Part 3, while Auth is still running; the accepted
 command uses real SST for high-risk classifications and the trusted local path
 for low-risk classifications. `make threshold-sweep-offline` is only a
 development diagnostic.
@@ -207,8 +231,11 @@ sample statistic, not a formal worst-case bound.
 
 ## Part 5: CSE 598 extension (1 point)
 
-Evaluate how session-key validity interacts with a context change. Run
-`make grad-key-validity` on a compute node with SST available.
+Evaluate how session-key validity interacts with a context change. After the
+common SST block finishes and stops Auth, run `lab make grad-key-validity` in
+the CPU allocation. The extension requires the existing Auth build and manages
+its own runtime generation and Auth processes for each validity period. Do not
+run it concurrently with the common experiments.
 
 Include:
 
@@ -233,14 +260,36 @@ is required.
 
 ## Deliverables
 
-Put your written answers in `submission/answers.md`. Copy
-`submission/answers_template.md` and fill in every field. Build the ZIP with
-`make submission GROUPID=<your-group-id>` (CSE 494) or `make submission
-GROUPID=<your-group-id> REQUIRE_GRAD=1` (CSE 598), then upload only that ZIP to
-Canvas. The CSE 598 form fails if any required Part 5 artifact is absent.
+Put your written answers in `submission/answers.md` and fill in every field of
+the answers template. Build the ZIP inside a CPU allocation using the `lab`
+wrapper from the README. Choose the command for your course section:
+
+```bash
+# CSE 494
+lab make submission GROUPID=<groupid>
+# CSE 598
+lab make submission GROUPID=<groupid> REQUIRE_GRAD=1
+unzip -l submission/group<groupid>_safe-agent-actuation.zip
+```
+
+Upload only that ZIP to Canvas. The CSE 598 form fails if any required Part 5
+artifact is absent.
 The ZIP includes your report, your edited course code, your configuration, your
 fixtures, and the applicable required JSON, JSONL, CSV, NPZ, and PNG results.
 JSONL is required only for the CSE 598 Part 5 experiment.
+
+| Part | Required result directory |
+|---|---|
+| 1 | `results/inspect-actions/` |
+| 2 | `results/low-risk/` |
+| 3 | `results/high-risk-allow/`, `results/high-risk-deny/`, `results/bypass/` |
+| 4 | `results/threshold-sweep/` |
+| 5 (CSE 598) | `results/grad-key-validity/` |
+
+The packager includes current files whether or not they are committed. Do not
+include model weights, the container image, environments, caches, or SST
+credentials. Run `lab make clean` only after inspecting and saving the ZIP;
+cleaning removes the results needed to rebuild it.
 
 ## Rubric
 
@@ -262,8 +311,9 @@ runnable baseline as you go.
 
 ## Group work
 
-You may work in a group. One member creates the group template repository on
-Sol, adds partners, and the group clones it. Put the group ID and every member
+You may work in a group. One member creates a private repository on GitHub from
+the public template, adds partners, and the group clones that private copy on
+Sol. Put the group ID and every member
 name in `submission/answers.md`. One member uploads the single ZIP. All members
 receive the same grade.
 

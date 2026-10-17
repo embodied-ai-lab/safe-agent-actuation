@@ -1,7 +1,8 @@
 #!/bin/bash
 # Compute job for the four common CSE 494/598 parts.
 #
-# Submit directly; the Fall 2026 course account and QoS are recorded below:
+# Build the image and complete the student TODOs before submitting.
+# The Fall 2026 course account and QoS are recorded below:
 #   sbatch slurm/run_experiments.sbatch
 #
 # CSE 598 groups add the extension to the same run:
@@ -40,7 +41,8 @@ RUN_GRAD_EXTENSION="${RUN_GRAD_EXTENSION:-0}"
 
 test -f "${image_path}" || {
   echo "Missing ${image_path}." >&2
-  echo "Set SIF to the course-provided image, or build one with sbatch slurm/build_container.sbatch." >&2
+  echo "Build it with sbatch slurm/build_container.sbatch, then wait for that job to succeed." >&2
+  echo "If you built it at another path, set SIF to that image." >&2
   exit 2
 }
 for dependency_root in "${openpi_root}" "${iotauth_root}"; do

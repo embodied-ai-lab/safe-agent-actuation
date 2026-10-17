@@ -42,5 +42,5 @@ From: nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
 
 %runscript
     echo "Bind the repository and scratch, then run make setup and make doctor."
-    echo "Model weights are staged separately with make model-setup."
+    echo "The graded workflow uses committed captures and fixtures; no model download is required."
 
